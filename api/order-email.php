@@ -37,7 +37,7 @@ function order_email(array $order): array
     $e = 'email_escape';
     $money = static function (int $cents): string { return '$' . number_format($cents / 100, 2) . ' CAD'; };
     $when = $order['createdAt'] ?? new DateTimeImmutable('now', new DateTimeZone('America/Vancouver'));
-    $date = $when->setTimezone(new DateTimeZone('America/Vancouver'))->format('D, M j, Y · g:i a T');
+    $date = $when->setTimezone(new DateTimeZone('America/Vancouver'))->format('D, M j, Y · g:i a');
     $delivery = $order['method'] === 'delivery';
     $method = $delivery ? 'Delivery requested' : 'Store pickup';
     $location = $delivery ? $order['address'] . "\n" . $order['postal'] : "Persian Baanou Supermarket\n220 6th St, New Westminster, BC V3L 3A2";
@@ -56,7 +56,7 @@ function order_email(array $order): array
     $locationHtml = nl2br($e($location));
     $noteHtml = nl2br($e($note));
     $subtotal = $money($order['subtotalCents']);
-    $text = "PERSIAN BAANOU SUPERMARKET\nNEW BREAD REQUEST\nReference: {$order['id']}\nReceived: $date\n\nCUSTOMER\n{$order['name']}\n{$order['phone']}\n\nBREAD SELECTION\n" . implode("\n", $textLines) . "\nBread subtotal: $subtotal\n\nFULFILMENT\n$method\n$location\nPreferred time: {$order['time']} (not yet confirmed)\n\nNOTES\n$note\n\nNo payment taken. Confirm availability, timing, applicable taxes and delivery charges with the customer.\nCustomer consented to sharing details for this request.\nStore: (604) 544-0046 · Open daily 8:30 am–10 pm, Vancouver time.";
+    $text = "PERSIAN BAANOU SUPERMARKET\nNEW BREAD REQUEST\nReference: {$order['id']}\nReceived: $date (Vancouver time)\n\nCUSTOMER\n{$order['name']}\n{$order['phone']}\n\nBREAD SELECTION\n" . implode("\n", $textLines) . "\nBread subtotal: $subtotal\n\nFULFILMENT\n$method\n$location\nPreferred time: {$order['time']} (not yet confirmed)\n\nNOTES\n$note\n\nNo payment taken. Confirm availability, timing, applicable taxes and delivery charges with the customer.\nCustomer consented to sharing details for this request.\nStore: (604) 544-0046 · Open daily 8:30 am–10 pm, Vancouver time.";
     $html = <<<HTML
 <!doctype html><html lang="en-CA"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Baanou bread request $id</title></head>
 <body style="margin:0;padding:0;background:#f3f0e9;font-family:Arial,Helvetica,sans-serif;color:#2d352b;">

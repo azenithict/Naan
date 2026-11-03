@@ -10,7 +10,9 @@ check((bool)preg_match('/^AX-0123-/',order_reference('Alex','+16045550123')),'Si
 $o=['id'=>$id,'name'=>'Aziz <script>alert(1)</script> Heravy','phone'=>'+17789343434','method'=>'delivery','address'=>'123 Main St <b>unit</b>','postal'=>'V3L 3A2','time'=>'Morning: 8 am–11 am','note'=>"No sesame <img src=x onerror=alert(1)>\nPlease call",'items'=>[['name'=>'Homestyle White Bread','quantity'=>2,'unitPriceCents'=>425],['name'=>'Homestyle Bran Bread','quantity'=>1,'unitPriceCents'=>450]],'subtotalCents'=>1300,'createdAt'=>new DateTimeImmutable('2026-11-03 23:46:02',new DateTimeZone('UTC'))];
 $email=order_email($o);
 check(strpos($email['html'],'$13.00 CAD')!==false,'Accurate subtotal');
-check(strpos($email['html'],'3:46 pm PST')!==false,'Vancouver timezone');
+// Respect the runtime tzdata, including changes to BC daylight saving rules.
+$localTime=$o['createdAt']->setTimezone(new DateTimeZone('America/Vancouver'))->format('g:i a');
+check(strpos($email['html'],$localTime)!==false && strpos($email['html'],'Vancouver time')!==false,'Vancouver timezone');
 check(strpos($email['html'],'<script>')===false && strpos($email['html'],'<img src=x')===false,'HTML escapes customer input');
 check(strpos($email['html'],'&lt;script&gt;')!==false,'Customer content preserved as text');
 check(strpos($email['html'],'Delivery requested')!==false,'Delivery label');
