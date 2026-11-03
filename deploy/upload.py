@@ -14,7 +14,7 @@ def deploy():
     if not root.startswith("/") or ".." in root.split("/") or any(c in root for c in "\r\n"):
         raise SystemExit("FTP_ROOT must be an absolute FTP-visible directory without traversal.")
     # The frontend switches to the new endpoint only after the endpoint is present.
-    files = ["api/order.php", "style.css", "app.js", "index.html"]
+    files = ["assets/bano-breads.png", "api/order.php", "style.css", "app.js", "index.html"]
     base = Path(__file__).resolve().parents[1]
     with ftplib.FTP_TLS(context=ssl.create_default_context(), timeout=60) as ftp:
         ftp.connect(os.environ["FTP_HOST"], 21)

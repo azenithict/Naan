@@ -1,6 +1,6 @@
 # cPanel deployment and automatic updates
 
-The production site is https://naan.azenith.ca. Changes pushed to main trigger `.github/workflows/deploy.yml`. Manual runs are also available through GitHub Actions. The uploader sends only index.html, style.css, app.js and api/order.php; existing host configuration is preserved. Files are uploaded under temporary names and renamed per file. This is not an atomic whole-site release. A failed workflow may require rerunning after fixing the reported issue.
+The production site is https://naan.azenith.ca. Changes pushed to main trigger `.github/workflows/deploy.yml`. Manual runs are also available through GitHub Actions. The uploader sends only index.html, style.css, app.js, api/order.php and assets/bano-breads.png; existing host configuration is preserved. Files are uploaded under temporary names and renamed per file. This is not an atomic whole-site release. A failed workflow may require rerunning after fixing the reported issue.
 
 ## One-time connection
 
@@ -15,7 +15,7 @@ No connection is active until these settings are supplied and a deployment succe
 
 ## Order emails
 
-PHP 7.4+ and enabled PHP mail() are required. The endpoint validates all bread prices and quantities on the server. Emails go to `f.heravy@gmail.com` with sender `orders@naan.azenith.ca`. Configure/authorize that sender with the hosting provider and verify SPF/DKIM through cPanel Email Deliverability. No SMTP password is embedded in the app.
+PHP 7.4+ and enabled PHP mail() are required. The endpoint validates bread quantities, Canadian contact details and consent. Prices are not yet configured: emails are quote requests in CAD, with final pricing and fulfilment confirmed by the bakery. Emails go to `f.heravy@gmail.com` with sender `orders@naan.azenith.ca`. Configure/authorize that sender with the hosting provider and verify SPF/DKIM through cPanel Email Deliverability. No SMTP password is embedded in the app.
 
 A successful API response means the host's mail transport accepted the email, not that Gmail delivered it. After deployment, place one real test order and verify Gmail inbox/spam plus cPanel Track Delivery. If the host disables mail(), configure supported authenticated SMTP separately. Payment is not implemented. Order history remains local to each browser; there is no central order database. Session throttling is basic and is not a full abuse prevention service.
 

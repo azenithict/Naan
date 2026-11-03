@@ -1,9 +1,9 @@
-# بانو | Bano Bakery
+# Bano — Persian Bakery, Canada
 
-Persian RTL bakery ordering site for naan.azenith.ca: three breads, quantities, pickup/delivery, validated checkout, email notification and local order history.
+English Canadian bakery site with Sangak, Barbari and Taftoon, accessible responsive layouts, North American phone validation, Canadian postal codes, consent and order-request emails to f.heravy@gmail.com.
 
-## Run
+Prices, taxes, delivery fees and service area are not supplied. The site intentionally requests a quote in CAD rather than publishing invented prices or accepting payment. Bano confirms each request directly. Browser history is separate from the previous Persian demo to avoid confusing toman orders with Canadian requests.
 
-Serve through PHP 7.4+ with mail() enabled (for example `php -S 127.0.0.1:3000`). A plain static server can display the UI but cannot submit orders. Orders are emailed to f.heravy@gmail.com by api/order.php. PHP mail acceptance does not prove inbox delivery; confirm through cPanel Track Delivery and Gmail after deployment.
+Run with PHP 7.4+: `php -S 127.0.0.1:3000`. Static serving supports UI development only. PHP mail() must be configured on the host. Mail transport acceptance is not proof of inbox delivery.
 
-Prices are samples in toman. No online payment or central order database is implemented. Optional Google Fonts falls back to local fonts. See deploy/README.md for GitHub Actions → cPanel FTPS configuration and mail sender setup.
+GitHub Actions deploys site files and locally hosted imagery over verified FTPS on main updates. Connection settings live in the production environment. See deploy/README.md. Images are generated editorial illustrations of the breads; actual appearance may vary.

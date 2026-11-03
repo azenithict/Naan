@@ -7,6 +7,7 @@ on:
       - style.css
       - app.js
       - api/**
+      - assets/**
       - deploy/upload.py
       - .github/workflows/deploy.yml
   workflow_dispatch:
