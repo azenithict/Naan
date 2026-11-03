@@ -26,9 +26,32 @@ jobs:
           node --check app.js
           php -l api/order.php
       - name: Upload over verified FTPS
+        id: upload
         env:
           FTP_HOST: ${{ vars.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_ROOT: ${{ vars.FTP_ROOT }}
         run: python3 deploy/upload.py
+      - name: Inspect public FTPS certificate after a failure
+        if: failure() && steps.upload.outcome == 'failure'
+        continue-on-error: true
+        env:
+          FTP_HOST: ${{ vars.FTP_HOST }}
+        run: |
+          python3 - <<'PYTHON'
+          import os, re, subprocess
+          host = os.environ.get("FTP_HOST", "")
+          if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*", host):
+              raise SystemExit("FTP_HOST must be a hostname only.")
+          # Public certificate inspection only: no login or file transfer.
+          result = subprocess.run(
+              ["openssl", "s_client", "-starttls", "ftp", "-connect", host + ":21",
+               "-servername", host, "-showcerts", "-verify_hostname", host],
+              input="", text=True, capture_output=True, timeout=25)
+          cert = subprocess.run(
+              ["openssl", "x509", "-noout", "-subject", "-issuer", "-dates", "-ext", "subjectAltName"],
+              input=result.stdout, text=True, capture_output=True, timeout=5)
+          print(cert.stdout or "Could not read the public certificate.")
+          print("Use the hosting provider's confirmed FTPS hostname matching this certificate; TLS verification remains required.")
+          PYTHON
