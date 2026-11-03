@@ -2,6 +2,8 @@
 import hashlib
 import json
 import os
+import time
+from http.client import RemoteDisconnected
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -11,16 +13,28 @@ ROOT = Path(__file__).resolve().parents[1]
 release = os.environ.get("GITHUB_SHA", "verification")
 files = ["index.html", "app.js", "style.css", "assets/bread-table.webp",
          "assets/white-bread.webp", "assets/bran-bread.webp"]
+def fetch(url):
+    # Some shared hosts reject Python's default client identification.
+    request = Request(url, headers={"Cache-Control": "no-cache", "User-Agent": "Baanou-Release-Check/1.0"})
+    for attempt in range(3):
+        try:
+            return urlopen(request, timeout=30)
+        except (RemoteDisconnected, ConnectionResetError, TimeoutError):
+            if attempt == 2:
+                raise
+            time.sleep(2)
+
+
 def verify():
     for name in files:
         url = BASE + ("" if name == "index.html" else name) + "?release=" + release
-        with urlopen(Request(url, headers={"Cache-Control": "no-cache"}), timeout=30) as response:
+        with fetch(url) as response:
             live = response.read()
         if hashlib.sha256(live).digest() != hashlib.sha256((ROOT / name).read_bytes()).digest():
             raise SystemExit("Live file does not match this release: " + name)
         print("Verified " + name)
     try:
-        with urlopen(BASE + "api/order.php?release=" + release, timeout=30):
+        with fetch(BASE + "api/order.php?release=" + release):
             raise SystemExit("Order API GET must return 405; verify PHP execution on this host.")
     except HTTPError as error:
         if error.code != 405:
