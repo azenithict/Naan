@@ -15,7 +15,7 @@ No connection is active until these settings are supplied and a deployment succe
 
 ## Order emails
 
-PHP 7.4+ and enabled PHP mail() are required. The endpoint validates bread quantities, Canadian contact details and consent. Prices are not yet configured: emails are quote requests in CAD, with final pricing and fulfilment confirmed by the bakery. Emails go to `f.heravy@gmail.com` with sender `orders@naan.azenith.ca`. Configure/authorize that sender with the hosting provider and verify SPF/DKIM through cPanel Email Deliverability. No SMTP password is embedded in the app.
+PHP 7.4+ and enabled PHP mail() are required. The endpoint validates bread quantities, Canadian contact details and consent. White bread is 425 CAD cents and bran bread is 450 CAD cents. Server-calculated bread subtotals are included in the request email. Applicable taxes, delivery fees and fulfilment remain subject to confirmation. Emails go to `f.heravy@gmail.com` with sender `orders@naan.azenith.ca`. Configure/authorize that sender with the hosting provider and verify SPF/DKIM through cPanel Email Deliverability. No SMTP password is embedded in the app.
 
 A successful API response means the host's mail transport accepted the email, not that Gmail delivered it. After deployment, place one real test order and verify Gmail inbox/spam plus cPanel Track Delivery. If the host disables mail(), configure supported authenticated SMTP separately. Payment is not implemented. Order history remains local to each browser; there is no central order database. Session throttling is basic and is not a full abuse prevention service.
 
