@@ -9,6 +9,7 @@ on:
       - api/**
       - assets/**
       - deploy/upload.py
+      - deploy/verify.py
       - .github/workflows/deploy.yml
   workflow_dispatch:
 permissions:
@@ -34,6 +35,8 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_ROOT: ${{ vars.FTP_ROOT }}
         run: python3 deploy/upload.py
+      - name: Verify live storefront and PHP endpoint
+        run: python3 deploy/verify.py
       - name: Inspect public FTPS certificate after a failure
         if: failure() && steps.upload.outcome == 'failure'
         continue-on-error: true
