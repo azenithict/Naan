@@ -43,8 +43,10 @@ form.addEventListener('change',e => { if(e.target.name === 'method') { const del
 function digits(value) { return value.replace(/[۰-۹]/g,c => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c))).replace(/[٠-٩]/g,c => String('٠١٢٣٤٥٦٧٨٩'.indexOf(c))); }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g,c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function showDialog(html) { $('#dialog-content').innerHTML = html; if(!$('#result-dialog').open) $('#result-dialog').showModal(); }
-form.addEventListener('submit',e => {
+let submitting = false;
+form.addEventListener('submit',async e => {
  e.preventDefault();
+ if(submitting) return;
  const data = new FormData(form);
  const name = data.get('name').trim();
  const phone = digits(data.get('phone')).replace(/[\s-]/g,'');
@@ -52,12 +54,26 @@ form.addEventListener('submit',e => {
  const error = !subtotal() ? 'لطفاً حداقل یک نان انتخاب کن.' : name.length < 2 ? 'لطفاً نام خود را وارد کن.' : !/^09\d{9}$/.test(phone) ? 'شماره موبایل معتبر با ۰۹ و ۱۱ رقم وارد کن.' : data.get('method') === 'delivery' && address.length < 10 ? 'لطفاً آدرس کامل تحویل را بنویس.' : '';
  if(error) { $('#form-error').textContent = error; return; }
  const order = {id:crypto.randomUUID(),date:new Date().toISOString(),name,phone,method:data.get('method'),address:data.get('method') === 'delivery' ? address : '',time:data.get('time'),note:data.get('note').trim(),items:breads.filter(b=>cart[b.id]).map(b=>({name:b.name,quantity:cart[b.id],price:b.price})),total:subtotal()+shipping()};
- try { if(!storageAvailable) throw new Error('storage unavailable'); localStorage.setItem(key,JSON.stringify([...orders,order])); } catch { $('#form-error').textContent = 'ذخیره سفارش در مرورگر ممکن نیست. فضای ذخیره‌سازی یا تنظیمات مرورگر را بررسی کن؛ سفارش ثبت نشد.'; return; }
+ submitting = true;
+ const submit = form.querySelector('button[type="submit"]');
+ submit.disabled = true; submit.textContent = 'در حال ارسال سفارش…';
+ try {
+  const response = await fetch('api/order.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...order,items:breads.filter(b=>cart[b.id]).map(b=>({id:b.id,quantity:cart[b.id]}))}), signal:AbortSignal.timeout(30000)});
+  const result = await response.json();
+  if(!response.ok) throw new Error(result.error || 'ارسال سفارش انجام نشد.');
+  if(typeof result.id !== 'string' || !Number.isFinite(result.total)) throw new Error('پاسخ سرور نامعتبر است.');
+  order.id = result.id; order.total = result.total;
+ } catch(error) {
+  $('#form-error').textContent = error.name === 'TimeoutError' || error instanceof TypeError ? 'پاسخ سرور دریافت نشد؛ ممکن است سفارش ارسال شده باشد. پیش از تکرار، با نانوایی بررسی کنید.' : error.message;
+  return;
+ } finally { submitting = false; submit.disabled = false; submit.innerHTML = 'ثبت سفارش <span>←</span>'; }
+ let historySaved = true;
+ try { localStorage.setItem(key,JSON.stringify([...orders,order])); } catch { historySaved = false; }
  orders.push(order);
  for(const id of Object.keys(cart)) cart[id] = 0;
  form.reset(); $('#address-field').hidden = true; form.elements.address.required = false; $('#form-error').textContent = ''; render();
- showDialog(`<div class="success-icon">✓</div><h2>سفارشت ذخیره شد!</h2><p>${escapeHtml(name)} عزیز، سفارش نمایشی شما با شماره <b dir="ltr">${order.id.slice(0,8).toUpperCase()}</b> در این مرورگر ثبت شد.</p><ul>${order.items.map(i=>`<li>${escapeHtml(i.name)} × ${fa(i.quantity)}</li>`).join('')}</ul><p>مبلغ کل: <strong>${money(order.total)}</strong><br>روش دریافت: ${order.method === 'delivery' ? 'ارسال به آدرس' : 'تحویل حضوری'}<br>زمان: ${escapeHtml(order.time)}</p><p class="local-note">سفارش به نانوایی ارسال نشده و مبلغی پرداخت نشده است.</p><button class="primary" id="continue-shopping">بازگشت به نان‌ها ←</button>`);
+ showDialog(`<div class="success-icon">✓</div><h2>سفارش به سرور ارسال شد!</h2><p>${escapeHtml(name)} عزیز، سفارش شما با شماره <b dir="ltr">${order.id.toUpperCase()}</b> برای ارسال ایمیل به نانوایی پذیرفته شد.</p><ul>${order.items.map(i=>`<li>${escapeHtml(i.name)} × ${fa(i.quantity)}</li>`).join('')}</ul><p>مبلغ کل: <strong>${money(order.total)}</strong><br>روش دریافت: ${order.method === 'delivery' ? 'ارسال به آدرس' : 'تحویل حضوری'}<br>زمان: ${escapeHtml(order.time)}</p><p class="local-note">سرور ایمیل، سفارش را پذیرفته است؛ تأیید نهایی دریافت و زمان آماده‌سازی با نانوایی است. مبلغی آنلاین پرداخت نشده است.${historySaved ? '' : ' سابقه در مرورگر ذخیره نشد؛ شماره سفارش را یادداشت کنید.'}</p><button class="primary" id="continue-shopping">بازگشت به نان‌ها ←</button>`);
 });
-$('#history-button').addEventListener('click',()=>showDialog(`<h2>سفارش‌های من</h2>${orders.length ? [...orders].reverse().map(o=>`<article><h3>سفارش <span dir="ltr">${escapeHtml(o.id.slice(0,8).toUpperCase())}</span></h3><p>${escapeHtml(new Date(o.date).toLocaleString('fa-IR'))}</p><ul>${o.items.map(i=>`<li>${escapeHtml(i.name)} × ${fa(i.quantity)}</li>`).join('')}</ul><p>${money(o.total)} · ${o.method === 'delivery' ? 'ارسال' : 'تحویل حضوری'}<br>${escapeHtml(o.time)}</p></article>`).join('') : '<p class="empty">هنوز سفارشی در این مرورگر ثبت نکرده‌ای.</p>'}<p class="local-note">این فهرست فقط شامل سفارش‌های نمایشی همین مرورگر است.</p>`));
+$('#history-button').addEventListener('click',()=>showDialog(`<h2>سفارش‌های من</h2>${orders.length ? [...orders].reverse().map(o=>`<article><h3>سفارش <span dir="ltr">${escapeHtml(o.id.slice(0,8).toUpperCase())}</span></h3><p>${escapeHtml(new Date(o.date).toLocaleString('fa-IR'))}</p><ul>${o.items.map(i=>`<li>${escapeHtml(i.name)} × ${fa(i.quantity)}</li>`).join('')}</ul><p>${money(o.total)} · ${o.method === 'delivery' ? 'ارسال' : 'تحویل حضوری'}<br>${escapeHtml(o.time)}</p></article>`).join('') : '<p class="empty">هنوز سفارشی در این مرورگر ثبت نکرده‌ای.</p>'}<p class="local-note">این فهرست فقط سابقه ذخیره‌شده در همین مرورگر را نشان می‌دهد؛ وضعیت تحویل ایمیل را مشخص نمی‌کند.</p>`));
 $('#result-dialog').addEventListener('click',e=>{ if(e.target.closest('.close') || e.target.closest('#continue-shopping')) $('#result-dialog').close(); });
 render();

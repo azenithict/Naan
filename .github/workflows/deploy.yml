@@ -1,0 +1,34 @@
+name: Deploy bakery to cPanel
+on:
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - style.css
+      - app.js
+      - api/**
+      - deploy/upload.py
+      - .github/workflows/deploy.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: naan-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Check JavaScript and PHP
+        run: |
+          node --check app.js
+          php -l api/order.php
+      - name: Upload over verified FTPS
+        env:
+          FTP_HOST: ${{ vars.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_ROOT: ${{ vars.FTP_ROOT }}
+        run: python3 deploy/upload.py
