@@ -41,4 +41,14 @@ def deploy():
 
 
 if __name__ == "__main__":
-    deploy()
+    try:
+        deploy()
+    except (Exception, SystemExit) as error:
+        message = type(error).__name__ + ": " + str(error)
+        for name in ("FTP_USER", "FTP_PASSWORD"):
+            value = os.environ.get(name)
+            if value:
+                message = message.replace(value, "[redacted]")
+        message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print("::error title=FTPS deployment::" + message)
+        raise
