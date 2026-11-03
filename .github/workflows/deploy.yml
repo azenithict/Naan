@@ -8,6 +8,7 @@ on:
       - app.js
       - api/**
       - assets/**
+      - tests/order-email.php
       - deploy/upload.py
       - deploy/verify.py
       - .github/workflows/deploy.yml
@@ -27,6 +28,8 @@ jobs:
         run: |
           node --check app.js
           php -l api/order.php
+          php -l api/order-email.php
+          php tests/order-email.php
       - name: Upload over verified FTPS
         id: upload
         env:
