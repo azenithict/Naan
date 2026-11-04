@@ -16,7 +16,7 @@ $phone=preg_replace('/\D/','',$phone);
 if(strlen($name)<2 || !preg_match('/^1?[2-9][0-9]{2}[2-9][0-9]{6}$/D',$phone) || !in_array($method,['pickup','delivery'],true) || !isset($times[$time]) || ($d['consent']??false)!==true) respond(422,['error'=>'Please check your name, North American phone number, time preference and consent.']);
 $phone='+1'.substr($phone,-10);
 if($method==='delivery' && (strlen($address)<10 || !preg_match('/^[ABCEGHJ-NPRSTVXY][0-9][ABCEGHJ-NPRSTV-Z][ -]?[0-9][ABCEGHJ-NPRSTV-Z][0-9]$/D',$postal))) respond(422,['error'=>'Please enter your delivery address and a valid Canadian postal code.']);
-$catalog=['white'=>['Homestyle White Bread',425],'bran'=>['Homestyle Bran Bread',450]];$items=$d['items']??null;
+$catalog=['white'=>['White bread',425],'bran'=>['Bran bread (brown)',450]];$items=$d['items']??null;
 if(!is_array($items)||count($items)<1||count($items)>2) respond(422,['error'=>'Please choose at least one bread.']);
 $lines=[];$seen=[];$subtotalCents=0;$emailItems=[];
 foreach($items as $item){if(!is_array($item))respond(422,['error'=>'Invalid bread selection.']);$id=$item['id']??'';$q=$item['quantity']??0;if(!is_string($id)||!isset($catalog[$id])||isset($seen[$id])||!is_int($q)||$q<1||$q>99)respond(422,['error'=>'Please check your bread quantities.']);$seen[$id]=true;[$label,$unitPrice]=$catalog[$id];$emailItems[]=['name'=>$label,'quantity'=>$q,'unitPriceCents'=>$unitPrice];$subtotalCents+=$unitPrice*$q;$lines[]=$label.' × '.$q.' @ CAD $'.number_format($unitPrice/100,2).' = CAD $'.number_format($unitPrice*$q/100,2);}

@@ -27,6 +27,6 @@ check(count($parts)===4,'MIME boundaries');
 foreach([1=>'text',2=>'html'] as $n=>$type){$part=explode("\r\n\r\n",$parts[$n],2);check(base64_decode(trim($part[1]),true)===$email[$type],'Round-trip '.$type);}
 $o['method']='pickup';$o['note']='';$pickup=order_email($o);
 check(strpos($pickup['html'],'220 6th St')!==false,'Pickup location');
-check(strpos($pickup['html'],'No additional notes.')!==false,'Empty note fallback');
+check(strpos($pickup['html'],'<strong>Note:</strong>')===false,'Empty notes do not add an unnecessary section');
 file_put_contents(sys_get_temp_dir().'/baanou-email-preview.html',$email['html']);
 echo "PASS: readable references, repeat suffix, Unicode, HTML escaping, CAD totals, Vancouver time, delivery/pickup, multipart round-trip. No email sent.\n";

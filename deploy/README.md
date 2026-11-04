@@ -1,6 +1,6 @@
 # cPanel deployment and automatic updates
 
-The production site is https://naan.azenith.ca. Changes pushed to main trigger `.github/workflows/deploy.yml`. Manual runs are also available through GitHub Actions. The uploader sends only index.html, style.css, app.js, api/order.php and assets/bread-table.webp, assets/white-bread.webp and assets/bran-bread.webp; existing host configuration is preserved. Files are uploaded under temporary names and renamed per file. This is not an atomic whole-site release. A failed workflow may require rerunning after fixing the reported issue.
+The production site is https://naan.azenith.ca. Changes pushed to main trigger `.github/workflows/deploy.yml`. Manual runs are also available through GitHub Actions. The uploader sends only index.html, style.css, app.js, api/order.php and assets/bread-reference.webp; existing host configuration is preserved. Files are uploaded under temporary names and renamed per file. This is not an atomic whole-site release. A failed workflow may require rerunning after fixing the reported issue.
 
 ## One-time connection
 

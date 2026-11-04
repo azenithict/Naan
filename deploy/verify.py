@@ -11,8 +11,7 @@ from urllib.request import Request, urlopen
 BASE = "https://naan.azenith.ca/"
 ROOT = Path(__file__).resolve().parents[1]
 release = os.environ.get("GITHUB_SHA", "verification")
-files = ["index.html", "app.js", "style.css", "assets/bread-table.webp",
-         "assets/white-bread.webp", "assets/bran-bread.webp"]
+files = ["index.html", "app.js", "style.css", "assets/bread-reference.webp"]
 def fetch(url):
     # Some shared hosts reject Python's default client identification.
     request = Request(url, headers={"Cache-Control": "no-cache", "User-Agent": "Baanou-Release-Check/1.0"})
