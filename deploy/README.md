@@ -20,3 +20,5 @@ PHP 7.4+ and enabled PHP mail() are required. The endpoint validates bread quant
 A successful API response means the host's mail transport accepted the email, not that Gmail delivered it. After deployment, place one real test order and verify Gmail inbox/spam plus cPanel Track Delivery. If the host disables mail(), configure supported authenticated SMTP separately. Payment is not implemented. Order history remains local to each browser; there is no central order database. Session throttling is basic and is not a full abuse prevention service.
 
 Before replacing existing files, retain a backup through cPanel. To roll back, revert the relevant app commit and rerun the deployment. Orders already emailed are not reverted.
+
+Release validation runs both PHP email/session-receipt tests and the four-viewport browser ordering suite before uploading. The UI test uses a loopback-only static server, intercepts API submission requests and sends no real emails. The browser test dependency is installed under the runner temporary directory; it does not modify application manifests.

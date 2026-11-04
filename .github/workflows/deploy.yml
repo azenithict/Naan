@@ -9,6 +9,8 @@ on:
       - api/**
       - assets/**
       - tests/order-email.php
+      - tests/order-state.php
+      - tests/storefront.cjs
       - deploy/upload.py
       - deploy/verify.py
       - .github/workflows/deploy.yml
@@ -29,7 +31,22 @@ jobs:
           node --check app.js
           php -l api/order.php
           php -l api/order-email.php
+          php -l api/order-state.php
           php tests/order-email.php
+          php tests/order-state.php
+      - name: Test desktop and mobile ordering
+        run: |
+          npm install --prefix "$RUNNER_TEMP/baanou-ui" --no-package-lock --no-audit --no-fund playwright-core@1.64.1
+          test_browser_path="$(command -v google-chrome || command -v chromium || true)"
+          if [ -z "$test_browser_path" ]; then
+            "$RUNNER_TEMP/baanou-ui/node_modules/.bin/playwright-core" install --with-deps chromium
+            test_browser_path="$(NODE_PATH="$RUNNER_TEMP/baanou-ui/node_modules" node -e 'process.stdout.write(require("playwright-core").chromium.executablePath())')"
+          fi
+          python3 -m http.server 3000 --bind 127.0.0.1 > "$RUNNER_TEMP/baanou-http.log" 2>&1 &
+          test_server_pid=$!
+          trap 'kill "$test_server_pid" 2>/dev/null || true' EXIT
+          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:3000/ > /dev/null
+          NODE_PATH="$RUNNER_TEMP/baanou-ui/node_modules" CHROMIUM_PATH="$test_browser_path" TEST_BASE_URL=http://127.0.0.1:3000/ node tests/storefront.cjs
       - name: Upload over verified FTPS
         id: upload
         env:
