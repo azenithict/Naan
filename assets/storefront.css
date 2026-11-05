@@ -41,6 +41,8 @@ body.storefront{--bg:#fffaf2;--ink:#38251d;--green:#a74422;--line:#e8ddce;--focu
 .storefront .bread-card:focus-within{border-color:#a74422;box-shadow:0 0 0 1px #a74422}
 .storefront .bread-image{position:relative;height:auto;min-height:218px;background:#ead6b5;overflow:hidden}
 .storefront .bread-image>img{display:block;width:100%;height:100%;position:absolute;inset:0;object-fit:cover;object-position:center}
+.storefront .bread-image.reference-product-photo{background:#f2e8d9}
+.storefront .bread-image.reference-product-photo>img{object-fit:contain;transform:none}
 .storefront .bread-info{min-width:0;display:flex;flex-direction:column;padding:22px 22px 20px}
 .storefront .bread-tag{display:inline-flex;align-self:flex-start;border:1px solid #e9dac6;border-radius:20px;background:#faf0df;color:#795733;font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;padding:4px 8px;line-height:1.5;margin-bottom:10px}
 .storefront .bread-info h3{font-size:21px;line-height:1.25;letter-spacing:-.55px;font-weight:600;margin:0 0 8px}
