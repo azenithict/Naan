@@ -26,3 +26,7 @@ Open `https://naan.azenith.ca/?setup=1`. Read `setup-token.txt` in the private d
 `php tests/shop-core.php`, `php tests/order-email.php` and `php tests/order-state.php` run without sending mail. The Playwright suite requires a loopback PHP server with `BAANOU_TEST_HTTP=1`, a fresh `BAANOU_DATA_DIR`, and matching `BAANOU_TEST_DATA_DIR` for the test process. It refuses non-local test targets. Test mode disables mail and must never be enabled in production. CI creates disposable storage, tests server behavior and English/Persian desktop/mobile flows, uploads over verified FTPS, and verifies the public site and safe API state.
 
 Keep the supplied font/image/phone-library notices in `THIRD-PARTY-NOTICES.html` and the in-page credits.
+
+## Ordering experience
+
+English and Persian share the same server-backed flow. Basket quantities and a valid baking-time selection can survive reload; customer details/passwords stay out of persistent browser storage. In-page form drafts and open disclosures survive language changes and failed requests. Mutations are serialized and identical in-flight requests coalesce; stale availability responses cannot overwrite a newer write. Customers can restore a previous authorized selection and choose a fresh baking time. Keyboard focus, touch targets, RTL spacing, localized errors and reduced motion are covered by the UI refinements. Automated accessibility checks supplement the disposable-server regression suite; they do not constitute a blanket WCAG certification.
