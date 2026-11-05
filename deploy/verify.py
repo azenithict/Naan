@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 BASE = "https://naan.azenith.ca/"
 ROOT = Path(__file__).resolve().parents[1]
 release = os.environ.get("GITHUB_SHA", "verification")
-files = ["index.html", "app.js", "style.css", "initial-state.js", "prototype-ui.js"]
+files = ["index.html", "app.js", "style.css", "initial-state.js", "prototype-ui.js", "storefront.js", "assets/storefront.css"]
 files += [str(path.relative_to(ROOT)) for path in sorted((ROOT / "assets/prototype").glob("*")) if path.is_file()]
 def fetch(url):
     # Some shared hosts reject Python's default client identification.

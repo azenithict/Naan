@@ -16,7 +16,7 @@ def deploy():
     # The frontend switches to the new endpoint only after the endpoint is present.
     files = ["api/order-email.php", "api/order-state.php", "api/shop-core.php", "api/seed.json", "api/shop.php", "api/order.php"]
     files += [str(path.relative_to(Path(__file__).resolve().parents[1])) for path in sorted((Path(__file__).resolve().parents[1] / "assets/prototype").glob("*")) if path.is_file()]
-    files += ["THIRD-PARTY-NOTICES.html", "initial-state.js", "prototype-ui.js", "style.css", "app.js", "index.html"]
+    files += ["THIRD-PARTY-NOTICES.html", "initial-state.js", "prototype-ui.js", "style.css", "assets/storefront.css", "app.js", "storefront.js", "index.html"]
     base = Path(__file__).resolve().parents[1]
     with ftplib.FTP_TLS(context=ssl.create_default_context(), timeout=60) as ftp:
         ftp.connect(os.environ["FTP_HOST"], 21)

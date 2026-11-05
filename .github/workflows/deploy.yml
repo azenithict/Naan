@@ -8,6 +8,7 @@ on:
       - prototype-ui.js
       - style.css
       - app.js
+      - storefront.js
       - api/**
       - assets/**
       - tests/order-email.php
@@ -32,6 +33,7 @@ jobs:
       - name: Check JavaScript and PHP
         run: |
           node --check app.js
+          node --check storefront.js
           node --check prototype-ui.js
           php -l api/order.php
           php -l api/order-email.php

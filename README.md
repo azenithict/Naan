@@ -1,6 +1,6 @@
 # Persian Baanou — server-backed version of the supplied bakery demo
 
-The supplied HTML’s styles, responsive layouts, fonts, licensed imagery, bilingual views, booking calendar, baking queue, walk-in counter, customer accounts, wallet, pickup verification, staff management and accounting are retained. `prototype-ui.js` contains the adapted presentation layer; `app.js` connects its operations to PHP. Client data cannot authorize payments, change balances or grant roles.
+The supplied HTML’s styles, responsive layouts, fonts, licensed imagery, bilingual views, booking calendar, baking queue, walk-in counter, customer accounts, wallet, pickup verification, staff management and accounting are retained. `prototype-ui.js` contains the adapted presentation layer; `app.js` connects its operations to PHP. `storefront.js` and `assets/storefront.css` provide the warm, product-first customer design, compact bread selection and persistent booking controls while keeping the operational views intact. Client data cannot authorize payments, change balances or grant roles.
 
 ## Run
 
