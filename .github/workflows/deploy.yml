@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - index.html
+      - initial-state.js
+      - prototype-ui.js
       - style.css
       - app.js
       - api/**
@@ -11,6 +13,7 @@ on:
       - tests/order-email.php
       - tests/order-state.php
       - tests/storefront.cjs
+      - tests/shop-core.php
       - deploy/upload.py
       - deploy/verify.py
       - .github/workflows/deploy.yml
@@ -29,11 +32,15 @@ jobs:
       - name: Check JavaScript and PHP
         run: |
           node --check app.js
+          node --check prototype-ui.js
           php -l api/order.php
           php -l api/order-email.php
           php -l api/order-state.php
           php tests/order-email.php
           php tests/order-state.php
+          php -l api/shop.php
+          php -l api/shop-core.php
+          php tests/shop-core.php
       - name: Test desktop and mobile ordering
         run: |
           npm install --prefix "$RUNNER_TEMP/baanou-ui" --no-package-lock --no-audit --no-fund playwright-core@1.64.1
@@ -42,11 +49,12 @@ jobs:
             "$RUNNER_TEMP/baanou-ui/node_modules/.bin/playwright-core" install --with-deps chromium
             test_browser_path="$(NODE_PATH="$RUNNER_TEMP/baanou-ui/node_modules" node -e 'process.stdout.write(require("playwright-core").chromium.executablePath())')"
           fi
-          python3 -m http.server 3000 --bind 127.0.0.1 > "$RUNNER_TEMP/baanou-http.log" 2>&1 &
+          test_data_dir="$(mktemp -d "$RUNNER_TEMP/baanou-data-XXXXXX")"
+          BAANOU_DATA_DIR="$test_data_dir" BAANOU_TEST_HTTP=1 php -S 127.0.0.1:3000 -t . > "$RUNNER_TEMP/baanou-http.log" 2>&1 &
           test_server_pid=$!
           trap 'kill "$test_server_pid" 2>/dev/null || true' EXIT
           curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:3000/ > /dev/null
-          NODE_PATH="$RUNNER_TEMP/baanou-ui/node_modules" CHROMIUM_PATH="$test_browser_path" TEST_BASE_URL=http://127.0.0.1:3000/ node tests/storefront.cjs
+          NODE_PATH="$RUNNER_TEMP/baanou-ui/node_modules" CHROMIUM_PATH="$test_browser_path" TEST_BASE_URL=http://127.0.0.1:3000/ BAANOU_TEST_DATA_DIR="$test_data_dir" node tests/storefront.cjs
       - name: Upload over verified FTPS
         id: upload
         env:

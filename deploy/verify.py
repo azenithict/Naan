@@ -11,7 +11,8 @@ from urllib.request import Request, urlopen
 BASE = "https://naan.azenith.ca/"
 ROOT = Path(__file__).resolve().parents[1]
 release = os.environ.get("GITHUB_SHA", "verification")
-files = ["index.html", "app.js", "style.css", "assets/bread-reference.webp"]
+files = ["index.html", "app.js", "style.css", "initial-state.js", "prototype-ui.js"]
+files += [str(path.relative_to(ROOT)) for path in sorted((ROOT / "assets/prototype").glob("*")) if path.is_file()]
 def fetch(url):
     # Some shared hosts reject Python's default client identification.
     request = Request(url, headers={"Cache-Control": "no-cache", "User-Agent": "Baanou-Release-Check/1.0"})
@@ -41,7 +42,13 @@ def verify():
         body = json.loads(error.read())
         if body.get("error") != "Method not allowed.":
             raise SystemExit("Unexpected order API response.")
-    print("Verified PHP endpoint; no order was submitted.")
+    with fetch(BASE + "api/shop.php?release=" + release) as response:
+        state = json.loads(response.read())
+    if state.get("account") is not None or "db" not in state or "csrf" not in state or state.get("testMode"):
+        raise SystemExit("Unexpected production shop state.")
+    if any("password" in account for account in state["db"].get("auth", [])):
+        raise SystemExit("Account credentials must not be exported.")
+    print("Verified server-backed shop and private storage; no order was submitted.")
 
 if __name__ == "__main__":
     try:

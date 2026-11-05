@@ -22,3 +22,9 @@ A successful API response means the host's mail transport accepted the email, no
 Before replacing existing files, retain a backup through cPanel. To roll back, revert the relevant app commit and rerun the deployment. Orders already emailed are not reverted.
 
 Release validation runs both PHP email/session-receipt tests and the four-viewport browser ordering suite before uploading. The UI test uses a loopback-only static server, intercepts API submission requests and sends no real emails. The browser test dependency is installed under the runner temporary directory; it does not modify application manifests.
+
+## Supplied-demo application
+
+The deployed UI now comes from the user-provided Baanou bakery HTML. Uploads include `prototype-ui.js`, `initial-state.js`, `assets/prototype/*`, `api/shop-core.php`, `api/seed.json` and `api/shop.php`. The old email-only POST endpoint returns 410 so stale clients cannot bypass reservations.
+
+Private records live outside the document root, default `/home/isp85/.baanou-data`. Never upload, reset or publish this folder. Initial administrator setup uses its one-time `setup-token.txt`; no default admin password exists. Customer-facing bookings work before setup, but the owner must activate Admin and review the provided baking schedule/capacity to operate the queue. Payments and SMS need their actual supported processes; wallet top-ups require verified store payment and SMS is explicitly not sent.

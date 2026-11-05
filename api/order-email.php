@@ -40,7 +40,9 @@ function order_email(array $order): array
     $date = $when->setTimezone(new DateTimeZone('America/Vancouver'))->format('D, M j, Y · g:i a');
     $delivery = $order['method'] === 'delivery';
     $method = $delivery ? 'Delivery requested' : 'Store pickup';
-    $location = $delivery ? $order['address'] . "\n" . $order['postal'] : "Persian Baanou Supermarket\n220 6th St, New Westminster, BC V3L 3A2";
+    $store=$order['store']??[];$storeName=$store['name']??'Persian Baanou Supermarket';$storeAddress=$store['address']??'220 6th St, New Westminster, BC V3L 3A2';$storePhone=$store['phone']??'+16045440046';
+    $location = $delivery ? $order['address'] . "\n" . $order['postal'] : $storeName."\n".$storeAddress;
+    $paymentNotice=$order['paymentNotice']??'No payment taken.';$paymentHtml=$e($paymentNotice);$storeNameHtml=$e($storeName);$storePhoneHtml=$e($storePhone);$storeTel=$e(preg_replace('/[^+0-9]/','',$storePhone));
     $note = $order['note'] !== '' ? $order['note'] : 'No additional notes.';
     $rows = '';
     $textLines = [];
@@ -58,7 +60,7 @@ function order_email(array $order): array
     $subtotal = $money($order['subtotalCents']);
     $noteSection = $order['note'] !== '' ? '<tr><td style="padding:9px 16px;border-top:1px solid #ecdfcc;font-size:12px;line-height:1.6;"><strong>Note:</strong> <span dir="auto">' . $noteHtml . '</span></td></tr>' : '';
 
-    $text = "PERSIAN BAANOU SUPERMARKET\nNEW BREAD REQUEST\nReference: {$order['id']}\nReceived: $date (Vancouver time)\n\nCUSTOMER\n{$order['name']}\n{$order['phone']}\n\nBREAD SELECTION\n" . implode("\n", $textLines) . "\nBread subtotal: $subtotal\n\nFULFILMENT\n$method\n$location\nPreferred time: {$order['time']} (not yet confirmed)\n\nNOTES\n$note\n\nNo payment taken. Confirm availability, timing, applicable taxes and delivery charges with the customer.\nCustomer consented to sharing details for this request.\nStore: (604) 544-0046 · Open daily 8:30 am–10 pm, Vancouver time.";
+    $text = "PERSIAN BAANOU SUPERMARKET\nNEW BREAD REQUEST\nReference: {$order['id']}\nReceived: $date (Vancouver time)\n\nCUSTOMER\n{$order['name']}\n{$order['phone']}\n\nBREAD SELECTION\n" . implode("\n", $textLines) . "\nBread subtotal: $subtotal\n\nFULFILMENT\n$method\n$location\nPreferred time: {$order['time']} (not yet confirmed)\n\nNOTES\n$note\n\n$paymentNotice Confirm availability, timing, applicable taxes and delivery charges with the customer.\nCustomer consented to sharing details for this request.\nStore: (604) 544-0046 · Open daily 8:30 am–10 pm, Vancouver time.";
     $html = <<<HTML
 <!doctype html><html lang="en-CA"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Baanou order $id</title></head>
 <body style="margin:0;padding:0;background:#fffaf2;font-family:Arial,Helvetica,sans-serif;color:#452b20;">
@@ -69,8 +71,8 @@ function order_email(array $order): array
 <tr><td style="padding:2px 16px 10px;"><table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><thead><tr style="background:#fff5e6;"><th align="left" style="padding:7px 6px;font-size:11px;font-weight:normal;">Bread</th><th align="center" style="padding:7px 6px;font-size:11px;font-weight:normal;">Qty</th><th align="right" style="padding:7px 6px;font-size:11px;font-weight:normal;">Amount</th></tr></thead><tbody>$rows</tbody><tfoot><tr><th colspan="2" align="left" style="padding:10px 0 0;font-size:13px;">Bread subtotal</th><td align="right" style="padding:10px 0 0;color:#a23e1f;font-size:17px;font-weight:bold;white-space:nowrap;">$subtotal</td></tr></tfoot></table></td></tr>
 <tr><td style="padding:10px 16px;border-top:1px solid #ecdfcc;font-size:12px;line-height:1.6;"><strong>$method</strong><br><span dir="auto">$locationHtml</span><br><span style="color:#856e5f;">Preferred:</span> $time</td></tr>
 $noteSection
-<tr><td style="padding:10px 16px;background:#fff8ed;border-top:1px solid #ecdfcc;font-size:11px;line-height:1.7;"><strong>Contact the customer to confirm.</strong> No payment taken.<br><span style="color:#856e5f;">Confirm availability, timing, any applicable taxes and delivery fee.</span></td></tr>
-<tr><td style="padding:9px 16px;font-size:10px;line-height:1.7;color:#856e5f;">Persian Baanou Supermarket · <a href="tel:+16045440046" style="color:#856e5f;">(604) 544-0046</a><br>Daily 8:30 am–10 pm · <a href="https://naan.azenith.ca/" style="color:#a23e1f;">naan.azenith.ca</a></td></tr>
+<tr><td style="padding:10px 16px;background:#fff8ed;border-top:1px solid #ecdfcc;font-size:11px;line-height:1.7;"><strong>Contact the customer to confirm.</strong> $paymentHtml<br><span style="color:#856e5f;">Confirm availability, timing, any applicable taxes and delivery fee.</span></td></tr>
+<tr><td style="padding:9px 16px;font-size:10px;line-height:1.7;color:#856e5f;">$storeNameHtml · <a href="tel:$storeTel" style="color:#856e5f;">$storePhoneHtml</a><br>Daily 8:30 am–10 pm · <a href="https://naan.azenith.ca/" style="color:#a23e1f;">naan.azenith.ca</a></td></tr>
 </table></td></tr></table></body></html>
 HTML;
     $boundary = 'baanou_' . bin2hex(random_bytes(16));

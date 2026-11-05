@@ -28,5 +28,6 @@ foreach([1=>'text',2=>'html'] as $n=>$type){$part=explode("\r\n\r\n",$parts[$n],
 $o['method']='pickup';$o['note']='';$pickup=order_email($o);
 check(strpos($pickup['html'],'220 6th St')!==false,'Pickup location');
 check(strpos($pickup['html'],'<strong>Note:</strong>')===false,'Empty notes do not add an unnecessary section');
+$o['paymentNotice']='Paid from approved wallet balance.';$wallet=order_email($o);check(strpos($wallet['html'],'Paid from approved wallet balance.')!==false,'Wallet payment is described accurately');
 file_put_contents(sys_get_temp_dir().'/baanou-email-preview.html',$email['html']);
 echo "PASS: readable references, repeat suffix, Unicode, HTML escaping, CAD totals, Vancouver time, delivery/pickup, multipart round-trip. No email sent.\n";

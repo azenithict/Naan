@@ -1,19 +1,28 @@
-# Bano — Persian Bakery, Canada
+# Persian Baanou — server-backed version of the supplied bakery demo
 
-English Canadian bakery site with homestyle white bread ($4.25 CAD) and bran bread ($4.50 CAD), accessible responsive layouts, North American phone validation, Canadian postal codes, consent and order-request emails to f.heravy@gmail.com.
+The supplied HTML’s styles, responsive layouts, fonts, licensed imagery, bilingual views, booking calendar, baking queue, walk-in counter, customer accounts, wallet, pickup verification, staff management and accounting are retained. `prototype-ui.js` contains the adapted presentation layer; `app.js` connects its operations to PHP. Client data cannot authorize payments, change balances or grant roles.
 
-Bread prices are computed in integer CAD cents on the client and server. Applicable taxes, delivery fees and service area require confirmation. No payment is taken. Bano confirms each request directly. Browser history is separate from the previous Persian demo to avoid confusing toman orders with Canadian requests.
+## Run
 
-Run with PHP 7.4+: `php -S 127.0.0.1:3000`. Static serving supports UI development only. PHP mail() must be configured on the host. Mail transport acceptance is not proof of inbox delivery.
+PHP 7.4+ with sessions, JSON, password hashing and mail() is required. No database extension is needed. Example: `php -S 127.0.0.1:3000 -t .`.
 
-GitHub Actions deploys site files and locally hosted imagery over verified FTPS on main updates. Connection settings live in the production environment. See deploy/README.md. Images are generated editorial illustrations of the breads; actual appearance may vary. The site is an ordering application with a two-product menu, an editable order summary, direct quantity entry, a compact details step, inline validation and mobile checkout bar. Customers can restore a previous selection from local history without automatically resending it. The supplied bread reference is shown separately rather than inventing distinct product photographs. Optional fields stay collapsed and no account or online payment is required. Customer contact fields are not saved in the persistent basket.
+The service writes an atomic JSON store under a separate locked private directory, default `/home/isp85/.baanou-data` on this host. It refuses storage inside the public web root. Back up `shop.json` securely; it contains customer records and password hashes. Deployment never uploads or resets this private store. There are no sample users, sample orders, default passwords or preloaded wallet funds.
 
-## Browser regression checks
+## First administrator
 
-With a static server running at port 3000, use `tests/storefront.cjs` with Node, playwright-core and Chromium installed. The script accepts `TEST_BASE_URL` and `CHROMIUM_PATH`. It verifies four screen widths, reference photo loading, quantity prices, mobile step navigation, basket persistence, delivery validation, simulated email failures/success and history. It intercepts submission requests and sends no real emails. For this cloud environment, use `NODE_PATH=/tmp/bano-validation/node_modules node tests/storefront.cjs`.
+Open `https://naan.azenith.ca/?setup=1`. Read `setup-token.txt` in the private directory through cPanel File Manager (enable hidden files). Enter that one-time token and choose an administrator password with at least 12 characters. The token file is deleted after successful setup. Never commit or share the token. Admin can create up to two staff accounts, configure sessions/capacity and approve actual received wallet payments.
 
-After FTPS upload, GitHub verifies the public HTML, scripts, styles and all current images against the release bytes, plus a non-mutating GET that must return the PHP API's 405 JSON response. Inbox delivery still needs a real order test; HTTP verification does not send mail.
+## Operational details
 
-Order notifications use an inline-styled HTML layout with a plain-text alternative, escaped customer fields, itemized server-calculated CAD prices and Vancouver local time. References follow `AH-3434-XXXXXXXX` (first/last initials, last four phone digits, random repeat-order suffix). Run `php tests/order-email.php` to validate the reference format, email rendering and MIME encoding without sending email.
+- White bread is initially $4.25 CAD and bran bread $4.50 CAD. A third configurable product is inactive. Store hours and the prototype’s baking settings are editable; review baking capacity/sessions before accepting production reservations.
+- Guest and signed-in orders share server-enforced slot and oven capacity. A six-digit pickup code and customer-based order reference are generated server-side. A ready order can be handed over once after its code is verified.
+- Cash/transfer payments require store confirmation. Wallet top-up requests do not create funds: an administrator must verify actual receipt of payment. Wallet purchases, refunds and adjustments are recorded in cents in the ledger. No online payment gateway is connected.
+- Order email goes to f.heravy@gmail.com. SMS delivery is not configured; the UI explicitly says to retain the pickup code. Email transport acceptance is not proof of inbox delivery.
+- Customer and staff permissions are enforced on every server operation. Anonymous availability responses redact customer details, codes and password hashes. Admin/staff passwords are server hashed; logout clears guest ownership from that session.
+- Existing requests from the earlier email-only site remain in the email inbox. They are not fabricated or imported into this new queue. Enter outstanding reservations as walk-in orders if capacity must be reserved for them.
 
-New submissions include a request UUID. The server reuses a completed receipt for a matching retry in the same PHP session, before rate limiting or sending another email. Token reuse with a different normalized order is rejected. The session retains at most 20 receipt hashes/results and no raw customer fields in that cache. This is not a persistent cross-device order database. Tests: `php tests/order-state.php`.
+## Tests / deployment
+
+`php tests/shop-core.php`, `php tests/order-email.php` and `php tests/order-state.php` run without sending mail. The Playwright suite requires a loopback PHP server with `BAANOU_TEST_HTTP=1`, a fresh `BAANOU_DATA_DIR`, and matching `BAANOU_TEST_DATA_DIR` for the test process. It refuses non-local test targets. Test mode disables mail and must never be enabled in production. CI creates disposable storage, tests server behavior and English/Persian desktop/mobile flows, uploads over verified FTPS, and verifies the public site and safe API state.
+
+Keep the supplied font/image/phone-library notices in `THIRD-PARTY-NOTICES.html` and the in-page credits.

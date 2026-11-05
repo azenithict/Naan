@@ -1,143 +1,67 @@
 'use strict';
-const breads = [
-  {id:'white',name:'White bread',price:425,tag:'No added bran',description:'Soft, golden homestyle flatbread. An everyday favourite.'},
-  {id:'bran',name:'Bran bread',price:450,tag:'Brown · With bran',description:'Our brown homestyle flatbread, made with bran.'}
-];
-const $ = selector => document.querySelector(selector);
-const form = $('#order-form');
-const cart = {white:0,bran:0};
-const cartKey = 'baanou-bread-bag-v1', historyKey = 'bano-canada-requests-v1';
-const money = cents => new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD'}).format(cents/100);
-const esc = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const count = () => cart.white+cart.bran;
-const subtotal = () => breads.reduce((sum,b)=>sum+cart[b.id]*b.price,0);
-let orders=[],submitting=false,feedbackTimer,pendingSubmission=null,currentReference='';
-try {
-  const saved=JSON.parse(localStorage.getItem(cartKey)||'{}');
-  for(const id of Object.keys(cart)) if(Number.isInteger(saved?.[id])&&saved[id]>=0&&saved[id]<=99) cart[id]=saved[id];
-} catch {}
-try {
-  const saved=JSON.parse(localStorage.getItem(historyKey)||'[]');
-  if(Array.isArray(saved)) orders=saved.filter(o=>o&&typeof o.id==='string'&&Array.isArray(o.items)&&typeof o.date==='string');
-} catch {}
-function saveCart(){try{localStorage.setItem(cartKey,JSON.stringify(cart));}catch{}}
-function feedback(message){$('#cart-feedback').textContent=message;$('#cart-feedback').classList.add('visible');clearTimeout(feedbackTimer);feedbackTimer=setTimeout(()=>$('#cart-feedback').classList.remove('visible'),2400);}
-function quantity(b){return `<div class="quantity"><button type="button" data-id="${b.id}" data-change="-1" aria-label="Remove one ${b.name}" ${!cart[b.id]||submitting?'disabled':''}>−</button><input type="number" inputmode="numeric" min="0" max="99" step="1" value="${cart[b.id]}" data-quantity="${b.id}" aria-label="${b.name} quantity" ${submitting?'disabled':''}><button type="button" data-id="${b.id}" data-change="1" aria-label="Add one ${b.name}" ${cart[b.id]>=99||submitting?'disabled':''}>+</button></div>`;}
-const breadIcon='<svg viewBox="0 0 50 50" aria-hidden="true"><path d="M12 43c-5-2-5-16-3-25S17 6 25 6s16 5 17 14-2 21-7 23-18 2-23 0Z"/><path d="m17 15 1 2m9-3 1 2m8 3 1 2m-23 4 1 2m10-4 1 2m10 4 1 2m-22 4 1 2m10-3 1 2"/></svg>';
-function reorderItems(order){
-  if(!order||!Array.isArray(order.items)) return [];
-  return order.items.filter(i=>i&&breads.some(b=>b.id===i.id)&&Number.isInteger(i.quantity)&&i.quantity>0&&i.quantity<=99);
+// Production integration of the supplied UI: only the PHP service authorizes mutations.
+let serverIdentity=null,csrf='',serverReady=false,placingKey=null,activePickupCode='';
+function applyState(result){db=result.db;cart=cart.map((q,i)=>db.breads[i]?.active?Math.min(q,db.breads[i].max):0);serverIdentity=result.account;csrf=result.csrf;identity=serverIdentity?{id:serverIdentity.id,version:serverIdentity.version}:null;userId=serverIdentity?.userId||'';admin=['admin','staff'].includes(serverIdentity?.role);authReady=true;serverReady=true;window.needsSetup=result.needsSetup;}
+async function shopRequest(action,data={}){
+ const response=action==='state'?await fetch('api/shop.php',{cache:'no-store'}):await fetch('api/shop.php',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({action,...data})});
+ const result=await response.json();if(!response.ok)throw Error(result.error||'Request failed.');applyState(result);return result;
 }
-function setStep(step,scroll=true){
-  if(step===2&&!count()){feedback('Choose at least one bread to continue.');return;}
-  $('#order-page').dataset.step=String(step);
-  document.body.classList.toggle('details-active',step===2);
-  $('#checkout').hidden=step!==2;$('#bag-stage').hidden=step===2;
-  $('#page-title').textContent=step===2?'You’re one step away.':'What’s in your bread bag?';
-  for(const [selector,num] of [['#bread-step',1],['#details-step',2]]){
-    if(step===num) $(selector).setAttribute('aria-current','step');else $(selector).removeAttribute('aria-current');
-  }
-  if(scroll){
-    const mobile=window.matchMedia('(max-width:700px)').matches;
-    (mobile?$('.order-toolbar'):step===2?$('.order-panel'):$('#breads')).scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});
-  }
-}
-function render(){
-  const active=document.activeElement;
-  const area=active?.closest('#cart-items')?'#cart-items':'#products';
-  const focusId=active?.dataset.id,focusChange=active?.dataset.change,focusQuantity=active?.dataset.quantity;
-  $('#products').innerHTML=breads.map(b=>`<article class="product ${b.id} ${cart[b.id]?'selected':''}"><div class="product-visual"><div class="bread-symbol">${breadIcon}</div><span class="product-tag">${b.tag}</span></div><h3>${b.name}</h3><p class="product-description">${b.description}</p><strong class="product-price">${money(b.price)}<small>CAD / bread</small></strong><div class="product-controls"><span>${cart[b.id]?cart[b.id]+' in your order':'Choose quantity'}</span>${quantity(b)}</div></article>`).join('');
-  $('#cart-items').innerHTML=count()?breads.filter(b=>cart[b.id]).map(b=>`<div class="cart-item"><div class="cart-item-top"><strong>${b.name}<small>× ${cart[b.id]}</small></strong><strong>${money(b.price*cart[b.id])}</strong></div><div class="cart-item-bottom"><span>${money(b.price)} each</span>${quantity(b)}</div></div>`).join(''):'<div class="empty-bag"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 16h28l2 27H8l2-27Zm7 0v-5a7 7 0 0 1 14 0v5"/></svg><strong>Your bread bag is waiting.</strong><p>Add white, bran, or a little of both.</p></div>';
-  $('#total').textContent=money(subtotal());$('#checkout-total').textContent=money(subtotal())+' CAD';
-  $('#cart-count').textContent=`${count()} ${count()===1?'bread':'breads'}`;
-  $('#selection-summary').textContent=breads.filter(b=>cart[b.id]).map(b=>`${cart[b.id]} ${b.name.toLowerCase()}`).join(' + ')+` · ${money(subtotal())} CAD`;
-  $('#history-count').textContent=orders.length;
-  $('#mobile-count').textContent=`${count()} ${count()===1?'bread':'breads'} · subtotal`;
-  $('#mobile-total').innerHTML=`${money(subtotal())} <small>CAD</small>`;
-  for(const selector of ['#continue-button','#mobile-continue']){
-    $(selector).disabled=!count()||submitting;
-    $(selector).innerHTML=count()?'Continue to details <span aria-hidden="true">→</span>':(selector==='#mobile-continue'?'Choose your bread':'Add bread to get started')+' <span aria-hidden="true">→</span>';
-  }
-  $('#details-step').disabled=!count()||submitting;$('#bread-step').disabled=submitting;$('#edit-bread').disabled=submitting;
-  $('#add-both').disabled=submitting||breads.some(b=>cart[b.id]>=99);
-  $('#submit-button').disabled=submitting||!count();
-  $('#submit-button').innerHTML=submitting?'Sending your request…':`Send order request · ${money(subtotal())} <span aria-hidden="true">→</span>`;
-  const lastIndex=orders.findLastIndex(o=>reorderItems(o).length);
-  $('#repeat-last').hidden=lastIndex<0;$('#repeat-last').disabled=submitting;
-  $('#repeat-last').dataset.order=String(lastIndex);
-  if(!count()&&$('#order-page').dataset.step==='2') setStep(1,false);
-  if(focusQuantity) document.querySelector(`${area} input[data-quantity="${focusQuantity}"]`)?.focus({preventScroll:true});
-  else if(focusId) (document.querySelector(`${area} button[data-id="${focusId}"][data-change="${focusChange}"]:not(:disabled)`)||document.querySelector(`${area} button[data-id="${focusId}"][data-change="1"]:not(:disabled)`))?.focus({preventScroll:true});
-}
-function updateQuantity(id,value){cart[id]=value;$('#form-error').textContent='';saveCart();render();}
-document.addEventListener('click',event=>{
-  const button=event.target.closest('[data-change]');
-  if(!button||submitting||!(button.dataset.id in cart)) return;
-  updateQuantity(button.dataset.id,Math.max(0,Math.min(99,cart[button.dataset.id]+Number(button.dataset.change))));
+sessionAccount=function(){return serverIdentity;};
+read=function(){};
+atomic=async function(){throw Error('This operation requires the order service.');};
+Object.assign(dictionary,{
+ demo:['Cash/transfer verified by the store. Wallet uses approved balance.','نقد و انتقال با تأیید فروشگاه؛ کیف پول از اعتبار تأییدشده استفاده می‌کند.'],
+ local:['Your order is shared with the bakery. Times: Vancouver.','سفارش شما در اختیار نانوایی قرار می‌گیرد؛ زمان‌ها به وقت ونکوور هستند.'],
+ warning:['Sign in with your store account.','با حساب فروشگاه وارد شوید.'],
+ authDemo:['Passwords and account permissions are checked by the server.','رمزها و سطح دسترسی در سرور بررسی می‌شوند.'],
+ credentials:['',''],customerDemo:['',''],authLoading:['Connecting…','در حال اتصال…'],
+ sms:['Pickup notification','اطلاعات تحویل'],
+ addDemoFunds:['Request wallet top-up','درخواست شارژ کیف پول'],
+ topupNote:['Verified store top-up','شارژ تأییدشده فروشگاه'],
+ minimumTopup:['Minimum $10 CAD. Funds are added only after the store verifies payment.','حداقل ۱۰ دلار؛ اعتبار تنها پس از تأیید پرداخت توسط فروشگاه اضافه می‌شود.'],
+ adjustmentDemo:['Record an actual payment or adjustment with a reason.','تنها پرداخت یا اصلاح واقعی را همراه دلیل ثبت کنید.'],
+ ledgerStart:['Server ledger. Wallet transfers are not counted twice as sales.','دفتر کل سرور؛ انتقال کیف پول دوباره به عنوان فروش محاسبه نمی‌شود.'],
+ sale_refund:['Sale refund','بازپرداخت فروش'],badPassword:['Use at least 10 characters and repeat the password correctly.','حداقل ۱۰ نویسه وارد کنید و رمز را درست تکرار کنید.']
 });
-document.addEventListener('change',event=>{
-  const input=event.target.closest('[data-quantity]');if(!input||submitting)return;
-  const value=input.value===''?0:Number(input.value);
-  if(!Number.isInteger(value)||value<0||value>99){input.value=cart[input.dataset.quantity];feedback('Choose a whole number from 0 to 99.');return;}
-  updateQuantity(input.dataset.quantity,value);
-});
-document.addEventListener('keydown',event=>{if(event.target.matches('[data-quantity]')&&event.key==='Enter'){event.preventDefault();event.target.blur();}});
-$('#add-both').addEventListener('click',()=>{if(submitting||breads.some(b=>cart[b.id]>=99))return;breads.forEach(b=>cart[b.id]++);saveCart();render();feedback('One white + one bran added · $8.75 CAD');});
-for(const selector of ['#continue-button','#mobile-continue','#details-step']) $(selector).addEventListener('click',()=>setStep(2));
-for(const selector of ['#bread-step','#edit-bread']) $(selector).addEventListener('click',()=>setStep(1));
-function restoreOrder(index){
-  const items=reorderItems(orders[index]);if(!items.length||submitting)return;
-  cart.white=0;cart.bran=0;for(const item of items)cart[item.id]=Math.min(99,cart[item.id]+item.quantity);
-  saveCart();render();$('#result-dialog').close();setStep(1);feedback('Previous selection added. Review it before sending.');
-}
-$('#repeat-last').addEventListener('click',()=>restoreOrder(Number($('#repeat-last').dataset.order)));
-function clearErrors(){for(const field of ['name','phone','address','postal','consent']){$('#'+field+'-error').textContent='';form.elements[field].removeAttribute('aria-invalid');form.elements[field].removeAttribute('aria-describedby');}$('#form-error').textContent='';}
-form.addEventListener('input',event=>{const name=event.target.name;if(['name','phone','address','postal','consent'].includes(name)){$('#'+name+'-error').textContent='';event.target.removeAttribute('aria-invalid');event.target.removeAttribute('aria-describedby');}});
-form.addEventListener('change',event=>{
-  if(event.target.name==='method'){
-    const delivery=form.elements.method.value==='delivery';$('#address-field').hidden=!delivery;
-    form.elements.address.required=delivery;form.elements.postal.required=delivery;
-    for(const name of ['address','postal']){$('#'+name+'-error').textContent='';form.elements[name].removeAttribute('aria-invalid');form.elements[name].removeAttribute('aria-describedby');}
-  }
-});
-function normalizePhone(value){const digits=value.replace(/\D/g,'');return /^1?[2-9]\d{2}[2-9]\d{6}$/.test(digits)?'+1'+digits.slice(-10):null;}
-const postalPattern=/^[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][ -]?\d[ABCEGHJ-NPRSTV-Z]\d$/i;
-function dialog(html,photo=false){$('#result-dialog').className=photo?'photo-dialog':'';$('#dialog-content').innerHTML=html;if(!$('#result-dialog').open)$('#result-dialog').showModal();}
-$('#photo-button').addEventListener('click',()=>dialog('<img src="assets/bread-reference.webp" alt="Traditional rectangular homestyle flatbreads on bakery racks"><p>Reference photo edited to remove its text overlay. Bread appearance may vary.</p>',true));
-form.addEventListener('submit',async event=>{
-  event.preventDefault();if(submitting)return;clearErrors();
-  if(!count()){setStep(1);feedback('Choose your bread first.');return;}
-  const data=new FormData(form),name=data.get('name').trim(),phone=normalizePhone(data.get('phone')),delivery=data.get('method')==='delivery',address=data.get('address').trim(),postal=data.get('postal').trim().toUpperCase();
-  const errors={};
-  if(name.length<2)errors.name='Enter your first and last name.';
-  if(!phone)errors.phone='Enter a Canadian or US phone number, with optional +1.';
-  if(delivery&&address.length<10)errors.address='Enter your complete delivery address.';
-  if(delivery&&!postalPattern.test(postal))errors.postal='Enter a Canadian postal code, such as V3L 3A2.';
-  if(!data.get('consent'))errors.consent='Please agree so we can handle your request.';
-  if(Object.keys(errors).length){for(const [field,message]of Object.entries(errors)){$('#'+field+'-error').textContent=message;form.elements[field].setAttribute('aria-invalid','true');form.elements[field].setAttribute('aria-describedby',field+'-error');}form.elements[Object.keys(errors)[0]].focus();return;}
-  const order={name,phone,method:data.get('method'),address:delivery?address:'',postal:delivery?postal:'',time:data.get('time'),note:data.get('note').trim(),consent:true,items:breads.filter(b=>cart[b.id]).map(b=>({id:b.id,name:b.name,quantity:cart[b.id],unitPriceCents:b.price}))};
-  const fingerprint=JSON.stringify(order);
-  if(!pendingSubmission||pendingSubmission.fingerprint!==fingerprint)pendingSubmission={fingerprint,token:crypto.randomUUID()};
-  const requestToken=pendingSubmission.token;
-  submitting=true;render();let result;
-  try{
-    const response=await fetch('api/order.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...order,requestToken}),signal:AbortSignal.timeout(30000)});
-    result=await response.json();
-    if(!response.ok)throw Error(result.error||'We couldn’t send your request. Please try again.');
-    if(typeof result.id!=='string'||!Number.isInteger(result.subtotalCents))throw Error('Unexpected response. Please call Baanou before retrying.');
-  }catch(error){$('#form-error').textContent=error.name==='TimeoutError'||error instanceof TypeError?'We couldn’t confirm the response. You can retry this same request, or call (604) 544-0046.':error.message;return;}
-  finally{submitting=false;render();}
-  order.id=result.id;order.date=new Date().toISOString();order.subtotalCents=result.subtotalCents;
-  if(!orders.some(o=>o.id===order.id))orders.push(order);
-  let saved=true;try{localStorage.setItem(historyKey,JSON.stringify(orders));}catch{saved=false;}
-  pendingSubmission=null;currentReference=order.id;cart.white=0;cart.bran=0;saveCart();form.reset();form.querySelector('.optional').open=false;
-  $('#address-field').hidden=true;form.elements.address.required=false;form.elements.postal.required=false;clearErrors();setStep(1,false);render();
-  dialog(`<div class="success-icon">✓</div><h2>You’re all set, ${esc(name.split(/\s+/)[0])}.</h2><p>Your request has been sent to Baanou. We’ll call to confirm availability, timing and the final amount.</p><div class="mini-summary"><strong>${esc(order.id)}</strong><button type="button" id="copy-reference">Copy</button></div><ul>${order.items.map(i=>`<li>${i.quantity} × ${esc(i.name)}</li>`).join('')}</ul><p><strong>${money(order.subtotalCents)} CAD</strong> bread subtotal. No payment taken.${saved?'':' Please keep your reference; your browser could not save history.'}</p><button type="button" class="primary" id="continue-shopping">Done <span aria-hidden="true">✓</span></button>`);
-});
-$('#history-button').addEventListener('click',()=>dialog(`<h2>My orders</h2><p>Your requests saved on this device.</p>${orders.length?[...orders].map((order,index)=>({order,index})).reverse().map(({order:o,index})=>`<article><h3>${esc(o.id)}</h3><p>${esc(new Date(o.date).toLocaleString('en-CA'))}<br>${o.items.map(i=>`${esc(i.quantity)} × ${esc(i.name)}`).join(' · ')}<br>${Number.isInteger(o.subtotalCents)?money(o.subtotalCents)+' CAD':''}</p>${reorderItems(o).length?`<button type="button" class="reorder" data-reorder="${index}">Order these breads again →</button>`:''}</article>`).join(''):'<p>No requests yet. Your next good meal starts with bread.</p>'}<p>For confirmation or changes, call <a href="tel:+16045440046">(604) 544-0046</a>.</p>`));
-$('#result-dialog').addEventListener('click',async event=>{
-  if(event.target.closest('.close,#continue-shopping'))$('#result-dialog').close();
-  const reorder=event.target.closest('[data-reorder]');if(reorder)restoreOrder(Number(reorder.dataset.reorder));
-  const copy=event.target.closest('#copy-reference');if(copy){try{await navigator.clipboard.writeText(currentReference);copy.textContent='Copied';}catch{copy.textContent='Select & copy code';}}
-});
-$('#year').textContent=new Date().getFullYear();render();
+const liveRender=render;
+render=function(){liveRender();document.title=db.settings.name+' · Bread orders';document.querySelectorAll('input[type=password]').forEach(e=>{if(e.autocomplete!=='current-password')e.minLength=10;});document.querySelectorAll('footer').forEach(f=>{if(!f.querySelector('.zenith-credit'))f.insertAdjacentHTML('beforeend','<p class="zenith-credit">Website Design &amp; Development by <a href="https://azenith.net/" target="_blank" rel="noopener noreferrer">A Zenith Web Solutions</a></p>');});};
+const liveSignIn=signInPage;
+signInPage=function(){let html=liveSignIn();if(window.needsSetup&&loginMode==='admin')html+=`<details id="setup-panel" class="card pad" open><summary>Initial administrator setup</summary><p class="small">Read the one-time token from <b>/home/isp85/.baanou-data/setup-token.txt</b> in cPanel File Manager. Never share it in chat.</p><form onsubmit="event.preventDefault();setupAdmin(this)"><label>Setup token</label><input name="token" required autocomplete="off"><label>New administrator password</label><input name="password" type="password" minlength="12" required autocomplete="new-password"><button class="primary">Create Admin</button></form></details>`;return html;};
+async function setupAdmin(f){try{await shopRequest('setup',{token:f.token.value.trim(),password:f.password.value});tab='security';go('admin');}catch(e){toast(e.message);}}
+signIn=async function(f){if(authBusy)return;authBusy=true;try{await shopRequest('login',{username:f.loginUsername.value.trim(),password:f.loginPassword.value});checkout.name='';checkout.phone='+1';if(isOperator()){tab='dashboard';go('admin');}else go(chosen&&count()?'checkout':'account');}catch(e){toast(e.message);}finally{authBusy=false;render();}};
+signOut=async function(guest=false){try{await shopRequest('logout');localStorage.removeItem('bano-v2-owned');walkin=false;verified='';checkout={name:'',phone:'+1',method:'cash'};go(guest?'home':'account');}catch(e){toast(e.message);}};
+registerUser=async function(f){if(authBusy)return;authBusy=true;try{await shopRequest('register',{name:f.fullName.value.trim(),phone:canadianPhone(f.phone.value),email:f.email.value,username:f.newUsername.value.trim(),password:f.newCustomerPassword.value});go(count()&&chosen?'checkout':'account');}catch(e){toast(e.message);}finally{authBusy=false;render();}};
+saveProfile=async function(f){try{await shopRequest('profile',{name:f.fullName.value.trim(),phone:canadianPhone(f.phone.value),email:f.email.value});render();toast(t('saved'));}catch(e){toast(e.message);}};
+changeMyPassword=async function(f){if(f.newPassword.value!==f.repeatPassword.value)return toast(t('badPassword'));try{await shopRequest('password',{current:f.currentPassword.value,password:f.newPassword.value});render();toast(t('passwordChanged'));}catch(e){toast(e.message);}};
+createStaff=async function(f){try{await shopRequest('staffCreate',{username:f.staffUsername.value,password:f.staffPassword.value});render();toast(t('staffCreated'));}catch(e){toast(e.message);}};
+setStaffPassword=async function(id,f){try{await shopRequest('staffPassword',{id,password:f.staffPassword.value});render();toast(t('passwordChanged'));}catch(e){toast(e.message);}};
+removeStaff=async function(id){try{await shopRequest('staffRemove',{id});staffRemoval='';render();toast(t('staffRemoved'));}catch(e){toast(e.message);}};
+topup=async function(value=topupDraft){try{await shopRequest('topup',{amount:digitsEN(value)});render();toast(lang==='fa'?'درخواست شارژ ثبت شد؛ فروشگاه باید پرداخت را تأیید کند.':'Top-up requested. The store must verify payment.');}catch(e){toast(e.message);}};
+adjustWallet=async function(id,f){try{await shopRequest('walletAdjust',{userId:id,amount:digitsEN(f.amount.value),direction:f.direction.value,reason:f.reason.value.trim()});walletEditId='';render();toast(t('balanceSaved'));}catch(e){toast(e.message);}};
+async function approveTopup(id){if(!confirm(lang==='fa'?'آیا پرداخت واقعی را دریافت کرده‌اید؟':'Have you actually received this payment?'))return;try{await shopRequest('topupApprove',{id});render();toast(t('balanceSaved'));}catch(e){toast(e.message);}}
+const liveAccounting=accounting;
+accounting=function(){return `<h3>${lang==='fa'?'شارژهای در انتظار پرداخت':'Top-ups awaiting verified payment'}</h3>${(db.topups||[]).filter(r=>r.status==='pending').map(r=>`<div class="card pad row"><span>${E(db.users.find(u=>u.id===r.userId)?.name||'')} · ${money(r.amountCents/100)}</span><button onclick="approveTopup('${r.id}')">${lang==='fa'?'پرداخت دریافت شد؛ تأیید شارژ':'Payment received — approve'}</button></div>`).join('')||'<p class="muted">—</p>'}${liveAccounting()}`;};
+placeOrder=async function(){
+ if(busy||!serverReady)return;const wasWalkin=walkin,name=document.getElementById('customerName').value.trim(),phone=canadianPhone(document.getElementById('customerPhone').value);checkout.name=name;checkout.phone=phone;if(name.length<2||!phone)return toast(t('required'));
+ const payload={name,phone,date:bookingDay,start:Number(chosen),quantities:cart.slice(),method:checkout.method,notes,walkin:wasWalkin};const fingerprint=JSON.stringify(payload);if(!placingKey||placingKey.fingerprint!==fingerprint)placingKey={fingerprint,key:crypto.randomUUID()};busy=true;render();
+ try{const result=await shopRequest('order',{...payload,requestKey:placingKey.key});orderId=result.orderId;placingKey=null;let owned=JSON.parse(localStorage.getItem('bano-v2-owned')||'[]');if(!wasWalkin&&!owned.includes(orderId))owned.push(orderId);try{localStorage.setItem('bano-v2-owned',JSON.stringify(owned));}catch{}cart=[0,0,0];notes='';walkin=false;if(wasWalkin){tab='counterReceipt';go('admin');}else go('confirmation');if(result.notification==='failed')toast(lang==='fa'?'سفارش ذخیره شد؛ ایمیل ارسال نشد. با فروشگاه تماس بگیرید.':'Order saved. Email unavailable; please call the store.');}
+ catch(e){toast(e.message);}finally{busy=false;render();}
+};
+changeStatus=async function(id,status){const order=db.orders.find(o=>o.id===id);let refundConfirmed=false;if(status==='cancelled'&&order?.payment==='paid'&&order.method!=='wallet'){refundConfirmed=confirm(lang==='fa'?'آیا مبلغ این سفارش را واقعاً به مشتری پس داده‌اید؟':'Have you actually refunded this paid order?');if(!refundConfirmed)return;}try{await shopRequest('status',{id,status,refundConfirmed});render();}catch(e){toast(e.message);render();}};
+payOrder=async function(id){if(!confirm(lang==='fa'?'پرداخت واقعاً دریافت شده است؟':'Confirm that payment was actually received?'))return;try{await shopRequest('pay',{id});render();}catch(e){toast(e.message);}};
+delayOrder=async function(id){const order=db.orders.find(o=>o.id===id),value=prompt(t('pickup')+' · HH:MM (Vancouver)',clock(order.end));if(value===null)return;if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value))return toast(t('invalidSettings'));try{await shopRequest('delay',{id,end:mins(value)});render();}catch(e){toast(e.message);}};
+verifyPickup=async function(f){try{const result=await shopRequest('verify',{id:f.oid.value.trim().toUpperCase(),code:f.code.value});verified=result.verified;activePickupCode=f.code.value;render();}catch(e){verified='';render();toast(e.message);}};
+confirmPickup=async function(){try{await shopRequest('handoff',{id:verified,code:activePickupCode});verified='';activePickupCode='';render();toast(t('deliveredOk'));}catch(e){verified='';render();toast(e.message);}};
+saveSettings=async function(f){
+ const val=k=>f.elements[k].value,num=k=>Number(val(k)),checked=k=>f.elements[k].checked;
+ try{const s=structuredClone(db.settings),bs=structuredClone(db.breads);for(const [field,input]of [['name','bakeryName'],['phone','bakeryPhone'],['address','address'],['storeOpen','storeOpen'],['storeClose','storeClose']])s[field]=val(input);if(imageDraft.logo!==undefined)s.logo=imageDraft.logo;s.days=[0,1,2,3,4,5,6].filter(i=>checked('day'+i));s.holidays=val('holidays').split(/[,،\s]+/).filter(Boolean);s.sessions=val('sessions').trim().split('\n').map(line=>{const[start,end]=line.trim().split('-');return{start,end};}).sort((a,b)=>a.start.localeCompare(b.start));for(const k of ['interval','horizon','ovens','ovenCapacity','slotCapacity','maxOrders','packing'])s[k]=num(k);s.overrun=checked('overrun');for(const k of ['cash','transfer','wallet'])s.payments[k]=checked(k);s.overrides={};for(const line of val('overrides').split('\n').filter(l=>l.trim())){const[key,cap,off]=line.trim().split(',');s.overrides[key]={capacity:Number(cap),disabled:off==='1'};}bs.forEach((b,i)=>{b.en=val('en'+i);b.fa=val('fa'+i);b.price=num('price'+i);b.bake=num('bake'+i);b.max=num('max'+i);b.active=checked('active'+i);b.descriptionEn=val('descriptionEn'+i);b.descriptionFa=val('descriptionFa'+i);if(imageDraft[i]!==undefined)b.image=imageDraft[i];});await shopRequest('settings',{settings:s,breads:bs});imageDraft={};cart=cart.map((q,i)=>db.breads[i].active?Math.min(q,db.breads[i].max):0);chosen='';render();toast(t('saved'));}catch(e){toast(e.message);}
+};
+resetDemo=function(){toast(lang==='fa'?'پاک‌کردن داده‌های واقعی از این صفحه مجاز نیست.':'Live records cannot be reset from this page.');};
+const liveSettings=settingsPage;
+settingsPage=function(){return liveSettings().replace(/<button type="button" onclick="resetDemo\(\)">[\s\S]*?<\/button>/,'');};
+const liveHome=home;
+home=function(){let i=0;return liveHome().replace(/<article class="card">[\s\S]*?<\/article>/g,card=>db.breads[i++].active?card:'');};
+const liveConfirmation=confirmation;
+confirmation=function(){return liveConfirmation().replace(`<b>${t('sms')}</b>`,`<b>${t('sms')}</b><p class="small muted">${lang==='fa'?'پیامک خودکار فعال نیست؛ کد تحویل را نگه دارید.':'Automatic SMS is not configured. Keep your pickup code.'}</p>`);};
+shopRequest('state').then(()=>{if(new URLSearchParams(location.search).get('setup')==='1'&&window.needsSetup){loginMode='admin';view='account';}render();if(window.needsSetup&&new URLSearchParams(location.search).get('setup')==='1')document.getElementById('setup-panel')?.scrollIntoView({block:'start'});}).catch(e=>{document.getElementById('app').innerHTML='<div class="notice">'+E(e.message)+' <a href="tel:+16045440046">(604) 544-0046</a></div>';});
+setInterval(()=>{if(serverReady&&!busy&&!authBusy&&!document.hidden&&!document.querySelector('input:focus,textarea:focus,select:focus'))shopRequest('state').then(()=>{if(new URLSearchParams(location.search).get('setup')==='1'&&window.needsSetup){loginMode='admin';view='account';}render();if(window.needsSetup&&new URLSearchParams(location.search).get('setup')==='1')document.getElementById('setup-panel')?.scrollIntoView({block:'start'});}).catch(()=>{});},30000);
