@@ -15,6 +15,7 @@ on:
       - tests/order-state.php
       - tests/storefront.cjs
       - tests/shop-core.php
+      - tests/reset-admin.php
       - deploy/upload.py
       - deploy/verify.py
       - .github/workflows/deploy.yml
@@ -43,6 +44,8 @@ jobs:
           php -l api/shop.php
           php -l api/shop-core.php
           php tests/shop-core.php
+          php -l api/reset-admin.php
+          php tests/reset-admin.php
       - name: Test desktop and mobile ordering
         run: |
           npm install --prefix "$RUNNER_TEMP/baanou-ui" --no-package-lock --no-audit --no-fund playwright-core@1.64.1

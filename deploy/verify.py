@@ -42,6 +42,12 @@ def verify():
         body = json.loads(error.read())
         if body.get("error") != "Method not allowed.":
             raise SystemExit("Unexpected order API response.")
+    try:
+        with fetch(BASE + "api/reset-admin.php?release=" + release):
+            raise SystemExit("Hosting-only admin reset must not be accessible over HTTP.")
+    except HTTPError as error:
+        if error.code != 404:
+            raise SystemExit("Hosting-only admin reset must return 404.")
     with fetch(BASE + "api/shop.php?release=" + release) as response:
         state = json.loads(response.read())
     if state.get("account") is not None or "db" not in state or "csrf" not in state or state.get("testMode"):

@@ -12,6 +12,19 @@ The service writes an atomic JSON store under a separate locked private director
 
 Open `https://naan.azenith.ca/?setup=1`. Read `setup-token.txt` in the private directory through cPanel File Manager (enable hidden files). Enter that one-time token and choose an administrator password with at least 12 characters. The token file is deleted after successful setup. Never commit or share the token. Admin can create up to two staff accounts, configure sessions/capacity and approve actual received wallet payments.
 
+## Hosting-account password recovery
+
+If the current administrator password is unavailable, the hosting owner can run `php /home/isp85/naan.azenith.ca/api/reset-admin.php --username=admin` from cPanel Terminal or SSH. Supply the new password on standard input using a hidden shell prompt; never place it in source, a URL or a command argument. For example:
+
+```bash
+read -r -s -p 'New admin password: ' baanou_admin_password
+printf '\n'
+printf '%s' "$baanou_admin_password" | php /home/isp85/naan.azenith.ca/api/reset-admin.php --username=admin
+unset baanou_admin_password
+```
+
+This owner-only utility permits 4–200 characters, hashes the password, requires one existing admin, retains other records and invalidates previous admin sessions. It returns 404 over HTTP; deployment does not run it or set any credentials. Ordinary web password changes retain their existing minimum length.
+
 ## Operational details
 
 - White bread is initially $4.25 CAD and bran bread $4.50 CAD. A third configurable product is inactive. Store hours and the prototype’s baking settings are editable; review baking capacity/sessions before accepting production reservations.
